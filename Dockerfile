@@ -1,30 +1,30 @@
-# Stage 1: Build Angular
-FROM node:16-alpine AS builder
+# Stage 1: Build
+FROM node:14-alpine AS builder
 
 WORKDIR /app
 
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --legacy-peer-deps
+# Используем npm install вместо npm ci (для старых lock-файлов)
+RUN npm install --legacy-peer-deps
 
 # Копируем исходники
 COPY . .
 
-# Сборка продакшн-версии
-RUN npm run build -- --prod
+# Сборка продакшн-версии (исправлено для Angular 7)
+RUN npm run build -- --prod --output-path=dist/kanban-ui
 
-# Stage 2: Nginx для отдачи статики
+# Stage 2: Nginx
 FROM nginx:alpine
 
-# Копируем существующий конфиг (не создаём новый!)
+# Копируем конфиг nginx
 COPY default.conf /etc/nginx/conf.d/default.conf
 
-# Копируем собранное приложение
+# Копируем собранное приложение (путь может отличаться)
 COPY --from=builder /app/dist/kanban-ui /usr/share/nginx/html
 
-# Non-root user для nginx
+# Non-root user для nginx (синтаксис Alpine)
 RUN addgroup -g 1001 -S nginxuser && \
     adduser -u 1001 -S nginxuser -G nginxuser && \
     chown -R nginxuser:nginxuser /usr/share/nginx/html /etc/nginx/conf.d
