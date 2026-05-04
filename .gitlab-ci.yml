@@ -1,0 +1,44 @@
+# demo-frontend/.gitlab-ci.yml
+
+stages:
+  - build
+  - test
+  - release
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_BUILDKIT: "1"
+
+default:
+  image: docker:24.0.7
+  services:
+    - docker:24.0.7-dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+
+# Сборка frontend образа
+build-frontend:
+  stage: build
+  script:
+    - docker build
+        --cache-from "$CI_REGISTRY_IMAGE/frontend:latest"
+        --tag "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA"
+        --tag "$CI_REGISTRY_IMAGE/frontend:latest"
+        .
+    - docker push "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/frontend:latest"
+
+# Тестирование (например, запуск линтера)
+# lint-frontend:
+#   stage: test
+#   script:
+#     - docker run --rm "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA" npm run lint
+#   only:
+#     - main
+
+release-frontend:
+  stage: release
+  script:
+    - echo "Frontend image built: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA"
+  only:
+    - main
